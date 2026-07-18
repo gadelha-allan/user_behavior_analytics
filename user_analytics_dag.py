@@ -3,6 +3,7 @@ from airflow import DAG
 from airflow.providers.amazon.aws.operators.s3 import S3CreateBucketOperator
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
 from airflow.providers.amazon.aws.transfers.sql_to_s3 import SqlToS3Operator
+from airflow.operators.bash import BashOperator
 
 
 default_args = {
@@ -47,4 +48,13 @@ with DAG(
         s3_key="raw/user_purchase/user_purchase.csv",
         replace=True,
     )
+    
+    movie_classifier = BashOperator(
+        task_id="movie_classifier",
+        bash_command="python /opt/airflow/dags/random_text_classification.py",
+    )
+
     create_s3_bucket >> [movie_review_to_s3, user_purchase_to_s3]
+    
+    movie_review_to_s3 >> movie_classifier
+
