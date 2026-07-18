@@ -4,7 +4,45 @@ from airflow.providers.amazon.aws.operators.s3 import S3CreateBucketOperator
 from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemToS3Operator
 from airflow.providers.amazon.aws.transfers.sql_to_s3 import SqlToS3Operator
 from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
+import duckdb
 
+
+def get_s3_folder(s3_bucket, s3_folder):
+    print(f"Simulando download do bucket {s3_bucket}, pasta {s3_folder} para o ambiente local...")
+
+
+def create_user_behaviour_metric():
+
+    q = """
+    with up as (
+      select 
+        * 
+      from 
+        '/opt/airflow/dags/user_purchase.csv'
+    ), 
+    mr as (
+      select 
+        * 
+      from 
+        '/opt/airflow/dags/clean_movie_review/*.parquet'
+    ) 
+    select 
+      up.customer_id, 
+      sum(up.quantity * up.unit_price) as amount_spent, 
+      sum(
+        case when mr.positive_review then 1 else 0 end
+      ) as num_positive_reviews, 
+      count(mr.cid) as num_reviews 
+    from 
+      up 
+      join mr on up.customer_id = mr.cid 
+    group by 
+      up.customer_id
+    """
+
+    duckdb.sql(q).write_csv("/opt/airflow/dags/behaviour_metrics.csv")
+    print("Métricas geradas com sucesso usando DuckDB!")
 
 default_args = {
     'owner': 'airflow',
@@ -54,7 +92,31 @@ with DAG(
         bash_command="python /opt/airflow/dags/random_text_classification.py",
     )
 
+    get_movie_review_to_warehouse = PythonOperator(
+        task_id="get_movie_review_to_warehouse",
+        python_callable=get_s3_folder,
+        op_kwargs={"s3_bucket": user_analytics_bucket, "s3_folder": "clean/movie_review"},
+    )
+
+    get_user_purchase_to_warehouse = PythonOperator(
+        task_id="get_user_purchase_to_warehouse",
+        python_callable=get_s3_folder,
+        op_kwargs={"s3_bucket": user_analytics_bucket, "s3_folder": "raw/user_purchase"},
+    )
+
+    get_user_behaviour_metric = PythonOperator(
+        task_id="get_user_behaviour_metric",
+        python_callable=create_user_behaviour_metric,
+    )
+
+
     create_s3_bucket >> [movie_review_to_s3, user_purchase_to_s3]
     
     movie_review_to_s3 >> movie_classifier
+    
+    movie_classifier >> get_movie_review_to_warehouse
+    
+    user_purchase_to_s3 >> get_user_purchase_to_warehouse
+    
+    [get_movie_review_to_warehouse, get_user_purchase_to_warehouse] >> get_user_behaviour_metric
 

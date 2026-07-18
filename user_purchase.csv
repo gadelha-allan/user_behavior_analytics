@@ -1,0 +1,5 @@
+invoice_number,stock_code,detail,quantity,invoice_date,unit_price,customer_id,country
+INV001,STK1,Product A,2,2023-10-01,15.50,1,Brazil
+INV002,STK2,Product B,1,2023-10-02,25.00,2,USA
+INV003,STK3,Product C,4,2023-10-03,10.00,3,Canada
+INV004,STK1,Product A,1,2023-10-04,15.50,1,Brazil
