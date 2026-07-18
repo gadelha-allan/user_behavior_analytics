@@ -108,6 +108,11 @@ with DAG(
         task_id="get_user_behaviour_metric",
         python_callable=create_user_behaviour_metric,
     )
+    
+    generate_dashboard = BashOperator(
+        task_id="generate_dashboard",
+        bash_command="cd /opt/airflow/dags && quarto render dashboard.qmd",
+    )
 
 
     create_s3_bucket >> [movie_review_to_s3, user_purchase_to_s3]
@@ -118,5 +123,6 @@ with DAG(
     
     user_purchase_to_s3 >> get_user_purchase_to_warehouse
     
-    [get_movie_review_to_warehouse, get_user_purchase_to_warehouse] >> get_user_behaviour_metric
+    [get_movie_review_to_warehouse, get_user_purchase_to_warehouse] >> get_user_behaviour_metric >> generate_dashboard
+
 

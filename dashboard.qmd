@@ -1,0 +1,32 @@
+---
+title: "Dashboard de Comportamento do Usuário"
+format: 
+  html:
+    embed-resources: true
+jupyter: python3
+---
+
+## Análise de Gastos e Reviews
+
+Abaixo, extraímos os dados consolidados pelo DuckDB para visualizar o comportamento de compras dos nossos clientes em relação às suas avaliações de filmes.
+
+```{python}
+#| echo: false
+import pandas as pd
+import plotly.express as px
+
+# Faço a leitura do nosso CSV final gerado pela task do DuckDB
+df = pd.read_csv('/opt/airflow/dags/behaviour_metrics.csv')
+
+# Gero um gráfico de barras cruzando o ID do cliente com o valor gasto
+fig = px.bar(
+    df, 
+    x='customer_id', 
+    y='amount_spent', 
+    title='Total Gasto por Cliente (Amount Spent)',
+    labels={'customer_id': 'ID do Cliente', 'amount_spent': 'Total Gasto ($)'},
+    color='num_positive_reviews',
+    color_continuous_scale='Blues'
+)
+
+fig.show()
