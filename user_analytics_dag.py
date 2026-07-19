@@ -6,6 +6,7 @@ from airflow.providers.amazon.aws.transfers.sql_to_s3 import SqlToS3Operator
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 import duckdb
+import pandas as pd
 
 
 def get_s3_folder(s3_bucket, s3_folder):
@@ -44,6 +45,22 @@ def create_user_behaviour_metric():
     duckdb.sql(q).write_csv("/opt/airflow/dags/behaviour_metrics.csv")
     print("Métricas geradas com sucesso usando DuckDB!")
 
+
+
+def check_data_quality():
+    
+    df = pd.read_csv('/opt/airflow/dags/behaviour_metrics.csv')
+    
+    if df.empty:
+        raise ValueError("Data Quality Falhou: O arquivo de métricas está vazio!")
+        
+
+    if df['customer_id'].isnull().any():
+        raise ValueError("Data Quality Falhou: Existem IDs de clientes nulos!")
+        
+    print("Data Quality Aprovado: Os dados estão consistentes e prontos para o Dashboard.")
+
+
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -58,8 +75,10 @@ with DAG(
     default_args=default_args,
     schedule_interval='@daily',
     catchup=False,
+    max_active_runs=1,
     description='DAG to Pull user data and movie review data to analyze their behaviour'
 ) as dag:
+
     
     create_s3_bucket = S3CreateBucketOperator(
         task_id="create_s3_bucket",
@@ -108,6 +127,11 @@ with DAG(
         task_id="get_user_behaviour_metric",
         python_callable=create_user_behaviour_metric,
     )
+        
+    check_quality = PythonOperator(
+        task_id="check_data_quality",
+        python_callable=check_data_quality,
+    )
     
     generate_dashboard = BashOperator(
         task_id="generate_dashboard",
@@ -123,6 +147,6 @@ with DAG(
     
     user_purchase_to_s3 >> get_user_purchase_to_warehouse
     
-    [get_movie_review_to_warehouse, get_user_purchase_to_warehouse] >> get_user_behaviour_metric >> generate_dashboard
+    [get_movie_review_to_warehouse, get_user_purchase_to_warehouse] >> get_user_behaviour_metric >> check_quality >> generate_dashboard
 
 
