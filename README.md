@@ -49,7 +49,7 @@ Para simplificar a execução e a visualização no ambiente de desenvolvimento,
 
 1. **Clone o repositório e acesse o diretório:**
    ```bash
-   git clone [https://github.com/seu-usuario/user_behavior_analytics.git](https://github.com/seu-usuario/user_behavior_analytics.git)
+   git clone https://github.com/gadelha-allan/user_behavior_analytics.git
    cd user_behavior_analytics
    ```
 2. **Suba a infraestrutura:**
