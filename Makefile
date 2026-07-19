@@ -7,5 +7,6 @@ down:
 	docker-compose down -v
 
 ci:
-	@echo "Executando verificações de CI..."
-	docker-compose ps
+	@echo "Executando testes locais..."
+	pip install pytest
+	pytest test_dag.py
